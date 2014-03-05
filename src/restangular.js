@@ -741,6 +741,61 @@ module.provider('Restangular', function() {
 
             config.urlCreatorFactory.path = Path;
 
+
+            /**
+             * This is the ODataPath URL creator. It uses OData Paths to show Hierarchy in the Rest API.
+             * This means that if you have an Account that then has a set of Buildings, a URL to a building
+             * would be /accounts(123)/buildings(456)
+             **/
+            var ODataPath = function () {};
+
+            ODataPath.prototype = new BaseCreator();
+
+            ODataPath.prototype.base = function (current) {
+              var __this = this;
+              return _.reduce(this.parentsArray(current), function (acum, elem) {
+                var elemUrl;
+                var elemSelfLink = __this.config.getUrlFromElem(elem);
+                if (elemSelfLink) {
+                  if (__this.config.isAbsoluteUrl(elemSelfLink)) {
+                    return elemSelfLink;
+                  } else {
+                    elemUrl = elemSelfLink;
+                  }
+                } else {
+                  elemUrl = elem[__this.config.restangularFields.route];
+
+                  if (elem[__this.config.restangularFields.restangularCollection]) {
+                    var ids = elem[__this.config.restangularFields.ids];
+                    if (ids) {
+                      elemUrl += "(" + ids.join(",") + ")";
+                    }
+                  } else {
+                    var elemId;
+                    if (__this.config.useCannonicalId) {
+                      elemId = __this.config.getCannonicalIdFromElem(elem);
+                    } else {
+                      elemId = __this.config.getIdFromElem(elem);
+                    }
+
+                    if (config.isValidId(elemId) && !elem.singleOne) {
+                      elemUrl += "(" + (__this.config.encodeIds ? encodeURIComponent(elemId) : elemId) + ")";
+                    }
+                  }
+                }
+
+                return acum.replace(/\/$/, "") + "/" + elemUrl;
+
+              }, this.config.baseUrl);
+            };
+
+            ODataPath.prototype.fetchUrl = Path.prototype.fetchUrl;
+            ODataPath.prototype.fetchRequestedUrl = Path.prototype.fetchRequestedUrl;
+
+
+
+            config.urlCreatorFactory.odata = ODataPath;
+
         };
 
         var globalConfiguration = {};
